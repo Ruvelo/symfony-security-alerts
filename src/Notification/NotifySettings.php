@@ -9,18 +9,30 @@ use Ruvelo\SecurityAdvisories\Severity;
 
 final readonly class NotifySettings
 {
+    /** @var list<string> */
+    public array $recipients;
+
     /**
-     * @param list<string> $recipients
+     * @param list<string> $recipients Each may itself be a comma-separated list, as an env var often is
      * @param list<string> $channels
      */
     public function __construct(
-        public array $recipients = [],
+        array $recipients = [],
         public array $channels = ['email'],
         public ?string $from = null,
         private ?string $appName = null,
         public ?string $minSeverity = null,
         private string $projectDir = '',
     ) {
+        $list = [];
+        foreach ($recipients as $recipient) {
+            foreach (explode(',', $recipient) as $address) {
+                if (($address = trim($address)) !== '') {
+                    $list[] = $address;
+                }
+            }
+        }
+        $this->recipients = $list;
     }
 
     public function appName(): string
