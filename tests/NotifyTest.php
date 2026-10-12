@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Ruvelo\SecurityAlertsBundle\Tests;
 
+use Doctrine\DBAL\Connection;
+use Psr\Cache\CacheItemPoolInterface;
 use Ruvelo\SecurityAdvisories\Ecosystem;
 use Ruvelo\SecurityAdvisories\Finding;
 use Ruvelo\SecurityAlertsBundle\Event\VulnerabilityExploitedEvent;
@@ -19,6 +21,21 @@ use Symfony\Component\Mime\Email;
  */
 final class NotifyTest extends BundleTestCase
 {
+    private function clear(string $pool): void
+    {
+        $cache = self::getContainer()->get($pool);
+        \assert($cache instanceof CacheItemPoolInterface);
+        $cache->clear();
+    }
+
+    private function dbal(): Connection
+    {
+        $connection = self::getContainer()->get('test.dbal');
+        \assert($connection instanceof Connection);
+
+        return $connection;
+    }
+
     private function mail(int $index = 0): Email
     {
         $message = self::getMailerMessage($index);
@@ -84,9 +101,13 @@ final class NotifyTest extends BundleTestCase
         $this->console(['--notify' => true]);
 
         self::assertSame(2, $this->eventCount(VulnerabilityResolvedEvent::class));
-        $keys = array_map(static fn (VulnerabilityResolvedEvent $e): string => $e->key, $this->events[VulnerabilityResolvedEvent::class]);
+        $keys = [];
+        foreach ($this->events[VulnerabilityResolvedEvent::class] as $event) {
+            self::assertInstanceOf(VulnerabilityResolvedEvent::class, $event);
+            $keys[] = $event->key;
+        }
         self::assertContains('composer:livewire/livewire:PKSA-g5js-3ypd-k2kr', $keys);
-        self::assertSame('livewire/livewire', $this->events[VulnerabilityResolvedEvent::class][0]->package());
+        self::assertSame('livewire/livewire', (new VulnerabilityResolvedEvent($keys[0]))->package());
         self::assertEmailCount(1); // Resolved findings are events, not emails.
     }
 
@@ -108,8 +129,8 @@ final class NotifyTest extends BundleTestCase
         $this->boot(['cache_pool' => 'cache.app']);
         $this->console(['--notify' => true]);
 
-        self::getContainer()->get('cache.app')->clear();
-        self::getContainer()->get('cache.system')->clear();
+        $this->clear('cache.app');
+        $this->clear('cache.system');
         $this->console(['--notify' => true]);
 
         self::assertEmailCount(1);
@@ -120,7 +141,7 @@ final class NotifyTest extends BundleTestCase
     {
         $this->boot(['cache_pool' => null, 'state' => ['store' => 'pool', 'pool' => 'cache.app']]);
         $this->console(['--notify' => true]);
-        self::getContainer()->get('cache.app')->clear();
+        $this->clear('cache.app');
         $this->console(['--notify' => true]);
 
         self::assertEmailCount(2);
@@ -139,7 +160,7 @@ final class NotifyTest extends BundleTestCase
         $this->console(['--notify' => true]);
 
         self::assertEmailCount(1);
-        $rows = self::getContainer()->get('test.dbal')->fetchFirstColumn('SELECT name FROM alerts_state ORDER BY name');
+        $rows = $this->dbal()->fetchFirstColumn('SELECT name FROM alerts_state ORDER BY name');
         self::assertSame(['known', 'last_check'], $rows);
     }
 

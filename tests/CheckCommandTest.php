@@ -116,7 +116,7 @@ final class CheckCommandTest extends BundleTestCase
         $this->boot();
         $this->console();
 
-        self::assertNull(self::getContainer()->get('security_alerts.state')->lastCheck());
+        self::assertNull($this->state()->lastCheck());
         self::assertEmailCount(0);
         self::assertSame(0, $this->eventCount(\Ruvelo\SecurityAlertsBundle\Event\VulnerabilityFoundEvent::class));
     }

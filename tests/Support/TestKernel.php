@@ -26,8 +26,8 @@ final class TestKernel extends Kernel
     use MicroKernelTrait;
 
     /**
-     * @param array<string, mixed>                $alerts       The security_alerts config
-     * @param array<string, mixed>                $framework    Extra framework config (mailer, notifier...)
+     * @param array<string, mixed>                                                     $alerts       The security_alerts config
+     * @param array<string, mixed>                                                     $framework    Extra framework config (mailer, notifier...)
      * @param list<class-string<\Symfony\Component\HttpKernel\Bundle\BundleInterface>> $extraBundles
      */
     public function __construct(
@@ -90,7 +90,6 @@ final class TestKernel extends Kernel
         $services = $container->services();
         $services->set('test.http_client', MockHttpClient::class)->args([service(FeedResponder::class)]);
         $services->set(FeedResponder::class);
-        $services->alias('test.security_alerts.checker', 'security_alerts.checker')->public();
 
         if (class_exists(DriverManager::class)) {
             $services->set('test.dbal', Connection::class)

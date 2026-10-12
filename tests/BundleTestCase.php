@@ -7,6 +7,7 @@ namespace Ruvelo\SecurityAlertsBundle\Tests;
 use Ruvelo\SecurityAlertsBundle\Event\VulnerabilityExploitedEvent;
 use Ruvelo\SecurityAlertsBundle\Event\VulnerabilityFoundEvent;
 use Ruvelo\SecurityAlertsBundle\Event\VulnerabilityResolvedEvent;
+use Ruvelo\SecurityAlertsBundle\State\StateStore;
 use Ruvelo\SecurityAlertsBundle\Tests\Support\FeedResponder;
 use Ruvelo\SecurityAlertsBundle\Tests\Support\TestKernel;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
@@ -14,9 +15,9 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Bundle\FrameworkBundle\Test\MailerAssertionsTrait;
 use Symfony\Bundle\FrameworkBundle\Test\NotificationAssertionsTrait;
 use Symfony\Component\Console\Tester\ApplicationTester;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class BundleTestCase extends KernelTestCase
 {
@@ -46,6 +47,9 @@ abstract class BundleTestCase extends KernelTestCase
         (new Filesystem())->remove($this->project);
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     protected static function createKernel(array $options = []): KernelInterface
     {
         return new TestKernel($options['alerts'] ?? [], $options['framework'] ?? [], $options['bundles'] ?? [], $options['variant'] ?? 'default');
@@ -55,8 +59,8 @@ abstract class BundleTestCase extends KernelTestCase
      * Boots an app. Defaults suit most tests: the fixture project, no feed cache,
      * state beside the project, and a mailer that records instead of sending.
      *
-     * @param array<string, mixed> $alerts
-     * @param array<string, mixed> $framework
+     * @param array<string, mixed>                                                     $alerts
+     * @param array<string, mixed>                                                     $framework
      * @param list<class-string<\Symfony\Component\HttpKernel\Bundle\BundleInterface>> $bundles
      */
     protected function boot(array $alerts = [], array $framework = [], array $bundles = []): void
@@ -69,8 +73,8 @@ abstract class BundleTestCase extends KernelTestCase
 
         self::bootKernel(['alerts' => $alerts, 'framework' => $framework, 'bundles' => $bundles, 'variant' => bin2hex(random_bytes(4))]);
 
-        $dispatcher = self::getContainer()->get(EventDispatcherInterface::class);
-        \assert($dispatcher instanceof EventDispatcherInterface);
+        $dispatcher = self::getContainer()->get('event_dispatcher');
+        \assert($dispatcher instanceof EventDispatcher);
         foreach ([VulnerabilityFoundEvent::class, VulnerabilityExploitedEvent::class, VulnerabilityResolvedEvent::class] as $event) {
             $dispatcher->addListener($event, function (object $e): void {
                 $this->events[$e::class][] = $e;
@@ -91,6 +95,14 @@ abstract class BundleTestCase extends KernelTestCase
         $code = $tester->run(['command' => 'security-alerts:check'] + $input, ['decorated' => false, 'interactive' => false]);
 
         return [$code, $tester->getDisplay()];
+    }
+
+    protected function state(): StateStore
+    {
+        $state = self::getContainer()->get('security_alerts.state');
+        \assert($state instanceof StateStore);
+
+        return $state;
     }
 
     protected function eventCount(string $class): int
