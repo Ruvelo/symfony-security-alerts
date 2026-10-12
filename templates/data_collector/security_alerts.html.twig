@@ -1,0 +1,62 @@
+{% extends '@WebProfiler/Profiler/layout.html.twig' %}
+
+{% block toolbar %}
+    {% if collector.hasReport %}
+        {% set status = collector.exploitedCount > 0 ? 'red' : (collector.total > 0 ? 'yellow' : 'green') %}
+        {% set icon %}
+            <span class="icon">{{ include('@WebProfiler/Icon/search.svg') }}</span>
+            <span class="sf-toolbar-value">{{ collector.exploitedCount > 0 ? collector.exploitedCount ~ ' exploited' : collector.total }}</span>
+        {% endset %}
+        {% set text %}
+            <div class="sf-toolbar-info-piece"><b>Known vulnerabilities</b><span>{{ collector.total }}</span></div>
+            <div class="sf-toolbar-info-piece"><b>Exploited in the wild</b><span class="sf-toolbar-status sf-toolbar-status-{{ collector.exploitedCount > 0 ? 'red' : 'green' }}">{{ collector.exploitedCount }}</span></div>
+            <div class="sf-toolbar-info-piece"><b>Last check</b><span>{{ collector.checkedAt ?? 'never' }}</span></div>
+        {% endset %}
+        {{ include('@WebProfiler/Profiler/toolbar_item.html.twig', { link: profiler_url, status: status }) }}
+    {% endif %}
+{% endblock %}
+
+{% block menu %}
+    <span class="label {{ collector.hasReport and collector.exploitedCount > 0 ? 'label-status-error' : '' }}">
+        <span class="icon">{{ include('@WebProfiler/Icon/search.svg') }}</span>
+        <strong>Security alerts</strong>
+        {% if collector.hasReport and collector.total > 0 %}
+            <span class="count"><span>{{ collector.total }}</span></span>
+        {% endif %}
+    </span>
+{% endblock %}
+
+{% block panel %}
+    <h2>Security alerts</h2>
+
+    {% if not collector.hasReport %}
+        <div class="empty">
+            <p>No check has been recorded yet. Run <code>bin/console security-alerts:check --notify</code>; this panel shows the latest stored report and never calls a feed.</p>
+        </div>
+    {% else %}
+        <div class="metrics">
+            <div class="metric"><span class="value">{{ collector.total }}</span><span class="label">Vulnerabilities</span></div>
+            <div class="metric"><span class="value">{{ collector.exploitedCount }}</span><span class="label">Exploited</span></div>
+        </div>
+        <p>Last check: {{ collector.checkedAt ?? 'unknown' }}{% if not collector.complete %} (incomplete: a lockfile or feed couldn't be read){% endif %}</p>
+
+        {% if collector.findings is empty %}
+            <div class="empty"><p>No known vulnerabilities.</p></div>
+        {% else %}
+            <table>
+                <thead><tr><th></th><th>Package</th><th>Installed</th><th>Fixed in</th><th>Advisory</th></tr></thead>
+                <tbody>
+                {% for f in collector.findings %}
+                    <tr>
+                        <td>{% if f.exploited %}<strong class="status-error">Exploited</strong>{% else %}{{ f.severity|replace({'_': ' '})|capitalize }}{% endif %}</td>
+                        <td>{{ f.package }}{% if f.ecosystem == 'npm' %} <small>npm</small>{% endif %}</td>
+                        <td>{{ f.installed }}</td>
+                        <td>{{ f.fixed_in ?? '–' }}</td>
+                        <td>{{ f.title }}{% if f.cve %} <small>{{ f.cve }}</small>{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endif %}
+{% endblock %}
