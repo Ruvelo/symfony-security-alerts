@@ -1,0 +1,102 @@
+{
+    "name": "ruvelo/security-alerts-bundle",
+    "description": "Tells you when a package your Symfony app runs becomes vulnerable, and when a known flaw starts being exploited in the wild. Packagist, OSV and CISA KEV, no keys.",
+    "keywords": [
+        "symfony",
+        "symfony-bundle",
+        "security",
+        "vulnerabilities",
+        "advisories",
+        "composer-audit",
+        "npm-audit",
+        "cisa-kev",
+        "osv",
+        "notifier"
+    ],
+    "license": "MIT",
+    "type": "symfony-bundle",
+    "homepage": "https://github.com/Ruvelo/symfony-security-alerts",
+    "authors": [
+        {
+            "name": "François Bultez",
+            "homepage": "https://github.com/francoisbultez",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "nyholm/psr7": "^1.8",
+        "ruvelo/security-advisories": "^1.0",
+        "symfony/cache": "^6.4 || ^7.0",
+        "symfony/config": "^6.4 || ^7.0",
+        "symfony/console": "^6.4 || ^7.0",
+        "symfony/dependency-injection": "^6.4 || ^7.0",
+        "symfony/event-dispatcher": "^6.4 || ^7.0",
+        "symfony/framework-bundle": "^6.4 || ^7.0",
+        "symfony/http-client": "^6.4 || ^7.0",
+        "symfony/http-kernel": "^6.4 || ^7.0"
+    },
+    "require-dev": {
+        "doctrine/dbal": "^3.6 || ^4.0",
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpunit/phpunit": "^10.5 || ^11.5 || ^12.0",
+        "symfony/mailer": "^6.4 || ^7.0",
+        "symfony/messenger": "^6.4 || ^7.0",
+        "symfony/notifier": "^6.4 || ^7.0",
+        "symfony/scheduler": "^6.4 || ^7.0",
+        "symfony/twig-bundle": "^6.4 || ^7.0",
+        "symfony/web-profiler-bundle": "^6.4 || ^7.0"
+    },
+    "suggest": {
+        "symfony/notifier": "Sends alerts through email and chat channels such as Slack (^6.4 || ^7.0)",
+        "symfony/mailer": "Emails the alerts when symfony/notifier isn't installed (^6.4 || ^7.0)",
+        "symfony/scheduler": "Registers the daily check for you; needs symfony/messenger too (^6.4 || ^7.0)",
+        "symfony/web-profiler-bundle": "Adds a Security alerts panel to the profiler in dev (^6.4 || ^7.0)",
+        "doctrine/dbal": "Keeps the known findings in a database table instead of a filesystem pool (^3.6 || ^4.0)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ruvelo\\SecurityAlertsBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ruvelo\\SecurityAlertsBundle\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "php-cs-fixer fix --dry-run --diff --ansi",
+        "format": "php-cs-fixer fix",
+        "analyse": "phpstan analyse --memory-limit=1G --no-progress",
+        "check": [
+            "@lint",
+            "@analyse",
+            "@test"
+        ],
+        "demo": "php demo/render.php build"
+    },
+    "scripts-descriptions": {
+        "test": "Run the test suite",
+        "lint": "Check code style",
+        "format": "Fix code style",
+        "analyse": "Run static analysis",
+        "check": "Lint, analyse and test: what CI runs",
+        "demo": "Render the terminal and email previews into build/"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "support": {
+        "issues": "https://github.com/Ruvelo/symfony-security-alerts/issues",
+        "source": "https://github.com/Ruvelo/symfony-security-alerts"
+    }
+}
