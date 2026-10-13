@@ -35,7 +35,7 @@ Then tell it who to email (see [the recipe](#installation-and-the-flex-recipe)) 
 - **Symfony Notifier or plain Mailer**: email and any chat channel your app has set up (Slack, Teams, Discord...), or just the Mailer if you don't use Notifier. Plus events for everything else.
 - **Scheduled for you** with `symfony/scheduler`, or one cron line.
 - **CI-ready command**: `--fail-on=exploited|critical|high|medium|any`, `--json`, exit code 2 when it couldn't check everything.
-- **Free sources, no keys**: Packagist, OSV.dev and CISA. Only package names (and, for npm, versions) leave your server, as with `composer audit`.
+- **No keys**: signed answers from Valtry's Advisory API (package names only, never versions), or Packagist, OSV.dev and CISA directly, which is also the automatic fallback and the opt-out (`source: public`).
 - **A profiler panel** in dev, with the latest report.
 
 Watching many sites? [Valtry](https://valtry.co.uk/?utm_source=ruvelo&utm_medium=github&utm_campaign=symfony-security-alerts) scans them from the outside.
@@ -79,11 +79,19 @@ Email needs a mailer: `framework.mailer.dsn` (or `envelope.sender` instead of `n
 
 ## Where it looks, and what it sends
 
+By default a check asks [Valtry's Advisory API](https://valtry.co.uk/docs/api/advisories) and uses the public feeds whenever Valtry can't answer. Both give the same findings; the scanning, matching and comparing are done by [`ruvelo/security-advisories`](https://github.com/Ruvelo/security-advisories) on your server.
+
 | Source | For | What leaves your server |
 |---|---|---|
-| [Packagist security advisories](https://packagist.org/apidoc#list-security-advisories) | Composer packages. It's the API `composer audit` uses, fed by the GitHub Advisory Database and FriendsOfPHP | Package names, in a POST of up to 200 at a time |
-| [OSV.dev](https://osv.dev) | npm packages from `package-lock.json` | Package names and versions; then each matching advisory is fetched by its ID |
-| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Which CVEs are being exploited | Nothing: the catalogue is downloaded whole |
+| Valtry Advisory API (default) | Composer and npm packages, and which advisories CISA lists as exploited | **Package names only**, and a random nonce. Never versions: they are matched on your server |
+| [Packagist security advisories](https://packagist.org/apidoc#list-security-advisories) (fallback, or opted out) | Composer packages. It's the API `composer audit` uses | Package names, in a POST of up to 200 at a time |
+| [OSV.dev](https://osv.dev) (fallback, or opted out) | npm packages from `package-lock.json` | Package names and versions; then each matching advisory is fetched by its ID |
+| [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) (fallback, or opted out) | Which CVEs are being exploited | Nothing: the catalogue is downloaded whole |
+
+- **Signed answers.** Valtry's answers carry an Ed25519 signature that is checked against keys built into the core (PHP's `sodium` extension), along with the nonce and the list of packages asked about. An answer that fails any check is discarded.
+- **Automatic fallback.** If Valtry can't be reached within 5 seconds, answers with an error, sends an answer that doesn't verify, or says its data is stale, that check uses Packagist, OSV and CISA directly, and Valtry is left alone for five minutes. The command, the report and `--json` say which path answered ("Checked 67 Composer and 38 npm packages via Valtry, signed" or "via public feeds").
+- **Opt out.** Set `security_alerts.source: public` to never contact Valtry. `RUVELO_ADVISORIES_SOURCE=public` in the environment does the same and wins over the config, so a server's owner can opt out without touching the app.
+- Valtry doesn't log the names it is sent or pair them with your address; its privacy terms are on [the API page](https://valtry.co.uk/docs/api/advisories).
 
 Nothing about your app is sent: no URL, no environment, no code. Requests go through Symfony's `http_client` (so they show in its profiler panel and obey your proxy settings) and identify themselves as `ruvelo/security-advisories`. Answers are cached in `cache.app` (an hour for advisories, six hours for the catalogue); `--fresh` skips the cache.
 
@@ -96,7 +104,7 @@ bin/console security-alerts:check
 | Option | |
 |---|---|
 | `--fail-on=exploited` | Exit with 1 when a finding is at least this bad: `exploited`, `critical`, `high`, `medium` or `any`. Exploited findings count at every level |
-| `--json` | Print the report as JSON |
+| `--json` | Print the report as JSON (`source` and `sources` say which path answered) |
 | `--notify` | Remember findings, send alerts for new ones and fire events. This is what the schedule runs; without it, the command changes nothing |
 | `--fresh` | Ignore cached feeds |
 
@@ -153,7 +161,7 @@ If you point `state.pool` at a pool that is cleared (such as `cache.app`), a `ca
 
 With `store: doctrine`, tell Doctrine to leave the table alone, or a migration diff will want to drop it: `doctrine.dbal.schema_filter: '~^(?!security_alerts_state$)~'`.
 
-A finding is one advisory on one package. It's **new** the first time a check sees it, or if it comes back after being fixed. It's **exploited** the first time the check sees its CVE in CISA's catalogue. It's **resolved** when a complete check of its ecosystem no longer finds it. An alert that couldn't be sent (mail down) isn't recorded, so the next check tries again. With nobody to tell (no recipients, no chat channel), findings are recorded and events still fire, and the command says so.
+A finding is one advisory on one package. Its stored identity survives a change of source: the same vulnerability reported under another id (Valtry names an advisory differently than Packagist, say) is the same finding, because the store also remembers each finding's CVE and aliases. It's **new** the first time a check sees it, or if it comes back after being fixed. It's **exploited** the first time the check sees its CVE in CISA's catalogue. It's **resolved** when a complete check of its ecosystem no longer finds it. An alert that couldn't be sent (mail down) isn't recorded, so the next check tries again. With nobody to tell (no recipients, no chat channel), findings are recorded and events still fire, and the command says so.
 
 ## Notifications
 
@@ -180,6 +188,8 @@ Everything works without configuration. The full tree, with defaults (`bin/conso
 ```yaml
 security_alerts:
     enabled: true                   # false registers nothing
+    source: valtry                  # valtry | public. "public" never contacts Valtry; RUVELO_ADVISORIES_SOURCE=public does too and wins
+    valtry_url: 'https://valtry.co.uk/api/advisories/v1/query'
     include_dev: false              # dev packages aren't deployed, so they're left out
     project_dir: '%kernel.project_dir%'   # where composer.lock and package-lock.json are
     cache_pool: cache.app           # for the feeds; null fetches every time
@@ -210,7 +220,7 @@ security_alerts:
 |---|---|---|
 | `VulnerabilityFoundEvent` | A check sees a finding for the first time, or again after it was fixed | `$finding` |
 | `VulnerabilityExploitedEvent` | A finding's CVE is in CISA's catalogue for the first time, new or not | `$finding` |
-| `VulnerabilityResolvedEvent` | A complete check no longer finds it | `$key`, `package()`, `advisoryId()`, `ecosystem()` |
+| `VulnerabilityResolvedEvent` | A complete check no longer finds it | `$key`, `$finding` (as last seen, when known), `package()`, `advisoryId()`, `ecosystem()` |
 
 They fire once per finding, from `--notify` runs and the schedule, after the finding is recorded. `$finding` is a `Ruvelo\SecurityAdvisories\Finding`.
 
@@ -230,7 +240,7 @@ With `symfony/web-profiler-bundle` in dev, a Security alerts panel shows the lat
 
 ## In your tests
 
-Point `security_alerts.http.client` at a `MockHttpClient` and nothing reaches the network. The bundle's own tests do exactly that: see `tests/Support/FeedResponder.php`, which answers the three feeds from recorded responses.
+Point `security_alerts.http.client` at a `MockHttpClient` and nothing reaches the network. The bundle's own tests do exactly that: see `tests/Support/FeedResponder.php`, which answers the three public feeds from recorded responses (set `source: public` there), and `tests/Support/ValtryFake.php`, which plays Valtry with a signed answer and a test key.
 
 ## Development
 
@@ -240,7 +250,7 @@ Clone, `composer install`, then `composer check` runs code style (PHP-CS-Fixer, 
 
 Built by [François Bultez](https://github.com/francoisbultez) at [Valtry](https://valtry.co.uk/?utm_source=ruvelo&utm_medium=github&utm_campaign=symfony-security-alerts), the website security scanner, and everyone who [contributes](https://github.com/Ruvelo/symfony-security-alerts/graphs/contributors).
 
-Advisories come from [Packagist](https://packagist.org) (and through it the [GitHub Advisory Database](https://github.com/advisories) and [FriendsOfPHP/security-advisories](https://github.com/FriendsOfPHP/security-advisories)), [OSV.dev](https://osv.dev) and [CISA](https://www.cisa.gov/known-exploited-vulnerabilities-catalog). Thanks to everyone who maintains them.
+Advisories come from [Valtry](https://valtry.co.uk/docs/api/advisories), [Packagist](https://packagist.org) (and through it the [GitHub Advisory Database](https://github.com/advisories) and [FriendsOfPHP/security-advisories](https://github.com/FriendsOfPHP/security-advisories)), [OSV.dev](https://osv.dev) and [CISA](https://www.cisa.gov/known-exploited-vulnerabilities-catalog). Thanks to everyone who maintains them.
 
 ## License
 

@@ -24,6 +24,7 @@ final class FeedResponder
     {
         self::$requests = [];
         self::$failing = [];
+        ValtryFake::reset();
     }
 
     /**
@@ -32,6 +33,10 @@ final class FeedResponder
     public function __invoke(string $method, string $url, array $options = []): ResponseInterface
     {
         self::$requests[] = $method.' '.$url;
+
+        if ($method === 'POST' && str_contains($url, 'valtry.test')) {
+            return isset(self::$failing['valtry.test']) ? new MockResponse('{}', ['http_code' => self::$failing['valtry.test']]) : ValtryFake::respond($options);
+        }
 
         foreach (self::$failing as $fragment => $status) {
             if (str_contains($url, $fragment)) {

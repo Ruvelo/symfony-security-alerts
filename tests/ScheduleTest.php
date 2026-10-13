@@ -36,11 +36,11 @@ final class ScheduleTest extends BundleTestCase
         $message = SecurityAlertsSchedule::message('06:30', 'UTC');
         $trigger = $message->getTrigger();
 
-        $after = new \DateTimeImmutable('2026-10-12 08:00:00', new \DateTimeZone('UTC'));
-        self::assertSame('2026-10-13 06:30', $trigger->getNextRunDate($after)?->format('Y-m-d H:i'));
+        $after = new \DateTimeImmutable('2031-10-12 08:00:00', new \DateTimeZone('UTC'));
+        self::assertSame('2031-10-13 06:30', $trigger->getNextRunDate($after)?->format('Y-m-d H:i'));
 
-        $before = new \DateTimeImmutable('2026-10-12 05:00:00', new \DateTimeZone('UTC'));
-        self::assertSame('2026-10-12 06:30', $trigger->getNextRunDate($before)?->format('Y-m-d H:i'));
+        $before = new \DateTimeImmutable('2031-10-12 05:00:00', new \DateTimeZone('UTC'));
+        self::assertSame('2031-10-12 06:30', $trigger->getNextRunDate($before)?->format('Y-m-d H:i'));
     }
 
     public function testTheHandlerRunsAnAnnouncingCheck(): void

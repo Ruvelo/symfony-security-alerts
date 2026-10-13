@@ -15,6 +15,7 @@ use Ruvelo\SecurityAlertsBundle\Check\Checker;
 use Ruvelo\SecurityAlertsBundle\Notification\Alert;
 use Ruvelo\SecurityAlertsBundle\Notification\AlertRenderer;
 use Ruvelo\SecurityAlertsBundle\Tests\Support\TestKernel;
+use Ruvelo\SecurityAlertsBundle\Tests\Support\ValtryFake;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -34,7 +35,7 @@ copy(__DIR__.'/../tests/Fixtures/package-lock.json', $project.'/package-lock.jso
 
 putenv('COLUMNS=150');
 $kernel = new TestKernel(
-    ['project_dir' => $project, 'cache_pool' => null, 'notify' => ['app_name' => 'Halyard'], 'state' => ['directory' => $project.'/state']],
+    ['project_dir' => $project, 'valtry_url' => ValtryFake::URL, 'cache_pool' => null, 'notify' => ['app_name' => 'Halyard'], 'state' => ['directory' => $project.'/state']],
     ['mailer' => ['dsn' => 'null://null']],
     variant: 'demo',
 );

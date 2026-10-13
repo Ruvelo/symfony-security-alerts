@@ -20,7 +20,7 @@ final class CheckCommandTest extends BundleTestCase
         self::assertStringContainsString('In CISA KEV since 2026-03-20, patch by 2026-04-03', $output);
         self::assertStringContainsString('11 vulnerabilities in 7 packages: 1 exploited in the wild, 2 critical, 3 high, 4 medium, 1 low.', $output);
         self::assertStringContainsString('Update livewire/livewire to 3.6.4 or later today.', $output);
-        self::assertStringContainsString('Checked 67 Composer and 3 npm packages.', $output);
+        self::assertStringContainsString('Checked 67 Composer and 3 npm packages via public feeds.', $output);
         self::assertStringContainsString('@kurkle/color npm', $output);
     }
 
@@ -52,7 +52,7 @@ final class CheckCommandTest extends BundleTestCase
         [$code, $output] = $this->console(['--fail-on' => 'any']);
 
         self::assertSame(0, $code);
-        self::assertStringContainsString('No known vulnerabilities in 1 Composer package.', $output);
+        self::assertStringContainsString('No known vulnerabilities in 1 Composer package, checked via public feeds.', $output);
     }
 
     public function testAnUnknownThresholdIsAnError(): void

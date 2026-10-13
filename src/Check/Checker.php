@@ -44,8 +44,8 @@ final class Checker
     {
         $report = $this->scanner->scan($fresh);
         $known = $this->state->known();
-        $changes = $this->reconciler->reconcile($known, $report);
-        $next = $this->reconciler->next($known, $report);
+        $seen = $this->seen();
+        $changes = $this->reconciler->reconcile($known, $report, $seen);
 
         /** @var array<string, Finding> $announce */
         $announce = [];
@@ -74,19 +74,18 @@ final class Checker
                 // Not recorded, so the next check announces them again.
                 foreach ($announce as $finding) {
                     $held[$finding->key()] = true;
-                    if (\array_key_exists($finding->key(), $known)) {
-                        $next[$finding->key()] = $known[$finding->key()];
-                    } else {
-                        unset($next[$finding->key()]);
-                    }
                 }
             }
         }
+
+        $next = $this->reconciler->next($known, $report, array_keys($held), $seen);
 
         $this->state->remember($next, [
             'report' => $report->toArray(),
             'announced' => $delivery === Delivery::Sent ? \count($announce) : 0,
             'delivery' => $delivery->value,
+            // Each stored key's finding as last seen: how a vulnerability is recognised when another source names it differently.
+            'seen' => $this->reconciler->lastSeen($seen, $report, $next),
         ]);
 
         foreach ($changes->new as $finding) {
@@ -100,9 +99,29 @@ final class Checker
             }
         }
         foreach ($changes->resolved as $key) {
-            $this->events->dispatch(new VulnerabilityResolvedEvent($key));
+            $this->events->dispatch(new VulnerabilityResolvedEvent($key, $changes->resolvedFinding($key)));
         }
 
         return new CheckResult($report, $changes, $delivery, $announce, \count($held), $error);
+    }
+
+    /**
+     * What the last check stored beside the known keys (a check from before
+     * 1.1 stored none, and keys alone still work).
+     *
+     * @return array<string, array<mixed>>
+     */
+    private function seen(): array
+    {
+        $seen = $this->state->lastCheck()['seen'] ?? [];
+        $out = [];
+
+        foreach (\is_array($seen) ? $seen : [] as $key => $finding) {
+            if (\is_string($key) && \is_array($finding)) {
+                $out[$key] = $finding;
+            }
+        }
+
+        return $out;
     }
 }

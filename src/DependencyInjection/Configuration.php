@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ruvelo\SecurityAlertsBundle\DependencyInjection;
 
+use Ruvelo\SecurityAdvisories\Valtry\ValtryAdvisorySource;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 
@@ -27,6 +28,16 @@ final class Configuration
                 ->booleanNode('include_dev')
                     ->info('Check require-dev packages too. They are not deployed, so they are left out by default')
                     ->defaultFalse()
+                ->end()
+                ->enumNode('source')
+                    ->info('Where advisories come from. valtry: Valtry\'s signed Advisory API, which is sent package names only (never versions), with Packagist, OSV and CISA used automatically whenever it can\'t answer. public: Packagist, OSV and CISA directly, nothing is sent to Valtry. RUVELO_ADVISORIES_SOURCE=public in the environment also opts out, and wins')
+                    ->values(['valtry', 'public'])
+                    ->defaultValue('valtry')
+                ->end()
+                ->scalarNode('valtry_url')
+                    ->info('Valtry\'s Advisory API endpoint; only changed for a mirror or a test')
+                    ->defaultValue(ValtryAdvisorySource::URL)
+                    ->cannotBeEmpty()
                 ->end()
                 ->scalarNode('project_dir')
                     ->info('Where composer.lock (and package-lock.json, if any) live')

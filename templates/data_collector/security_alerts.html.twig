@@ -38,7 +38,7 @@
             <div class="metric"><span class="value">{{ collector.total }}</span><span class="label">Vulnerabilities</span></div>
             <div class="metric"><span class="value">{{ collector.exploitedCount }}</span><span class="label">Exploited</span></div>
         </div>
-        <p>Last check: {{ collector.checkedAt ?? 'unknown' }}{% if not collector.complete %} (incomplete: a lockfile or feed couldn't be read){% endif %}</p>
+        <p>Last check: {{ collector.checkedAt ?? 'unknown' }}, via {{ collector.source }}{% if not collector.complete %} (incomplete: a lockfile or feed couldn't be read){% endif %}</p>
 
         {% if collector.findings is empty %}
             <div class="empty"><p>No known vulnerabilities.</p></div>

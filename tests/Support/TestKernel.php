@@ -9,6 +9,8 @@ use Doctrine\DBAL\DriverManager;
 use Ruvelo\SecurityAlertsBundle\SecurityAlertsBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
@@ -73,6 +75,19 @@ final class TestKernel extends Kernel
     private function varDir(): string
     {
         return \dirname(__DIR__, 2).'/var/tests/'.substr(sha1(serialize([$this->alerts, $this->framework, $this->extraBundles, $this->variant])), 0, 12);
+    }
+
+    protected function build(ContainerBuilder $container): void
+    {
+        // The bundle verifies Valtry's answers against the keys the core pins; tests sign their own.
+        $container->addCompilerPass(new class implements CompilerPassInterface {
+            public function process(ContainerBuilder $container): void
+            {
+                if ($container->hasDefinition('security_alerts.scanner')) {
+                    $container->getDefinition('security_alerts.scanner')->replaceArgument(7, ValtryFake::keys());
+                }
+            }
+        });
     }
 
     protected function configureContainer(ContainerConfigurator $container): void

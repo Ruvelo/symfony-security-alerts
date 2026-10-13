@@ -12,6 +12,7 @@ use Ruvelo\SecurityAlertsBundle\Command\CheckCommand;
 use Ruvelo\SecurityAlertsBundle\Http\JsonClientFactory;
 use Ruvelo\SecurityAlertsBundle\Notification\NotifySettings;
 use Ruvelo\SecurityAlertsBundle\Profiler\SecurityAlertsDataCollector;
+use Ruvelo\SecurityAlertsBundle\Scan\ScannerFactory;
 use Ruvelo\SecurityAlertsBundle\Schedule\CheckMessageHandler;
 use Ruvelo\SecurityAlertsBundle\Schedule\SecurityAlertsSchedule;
 use Ruvelo\SecurityAlertsBundle\State\CachePoolStateStore;
@@ -61,8 +62,8 @@ final class Wiring
         }
 
         $container->register('security_alerts.scanner', Scanner::class)
-            ->setFactory([Scanner::class, 'forProject'])
-            ->setArguments([$config['project_dir'], new Reference('security_alerts.http'), $cache, $config['include_dev'], new Reference('security_alerts.ttls')]);
+            ->setFactory([ScannerFactory::class, 'create'])
+            ->setArguments([$config['project_dir'], new Reference('security_alerts.http'), $cache, $config['include_dev'], new Reference('security_alerts.ttls'), $config['source'], $config['valtry_url'], null]);
 
         $container->register('security_alerts.reconciler', Reconciler::class);
 

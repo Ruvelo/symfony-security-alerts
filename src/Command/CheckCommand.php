@@ -111,7 +111,7 @@ final class CheckCommand extends Command
 
         if ($report->isClean()) {
             if ($report->packageCount() > 0) {
-                $io->success('No known vulnerabilities in '.$this->scope($report).'.');
+                $io->success('No known vulnerabilities in '.$this->scope($report).', checked '.self::source($report).'.');
             }
         } else {
             $rows = [];
@@ -193,7 +193,7 @@ final class CheckCommand extends Command
             $lines[] = '<options=bold>Update '.OutputFormatterEscape::escape($worst->package).($worst->fixedIn !== null && !str_starts_with($worst->fixedIn, '>') ? ' to '.OutputFormatterEscape::escape($worst->fixedIn).' or later' : '').' today.</>';
         }
 
-        $lines[] = '<fg=gray>Checked '.$this->scope($report).'.</>';
+        $lines[] = '<fg=gray>Checked '.$this->scope($report).' '.self::source($report).'.</>';
 
         return $lines;
     }
@@ -208,6 +208,18 @@ final class CheckCommand extends Command
         }
 
         return implode(' and ', $parts).' '.($report->packageCount() === 1 ? 'package' : 'packages');
+    }
+
+    /**
+     * Which path answered, as "via Valtry, signed" or "via public feeds".
+     */
+    public static function source(Report $report): string
+    {
+        return 'via '.match ($report->source) {
+            'valtry' => 'Valtry, signed',
+            'mixed' => 'Valtry, signed, and public feeds',
+            default => 'public feeds',
+        };
     }
 
     private static function plural(string $word, int $count, ?string $plural = null): string

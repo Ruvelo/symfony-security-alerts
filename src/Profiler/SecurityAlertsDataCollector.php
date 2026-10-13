@@ -79,6 +79,18 @@ final class SecurityAlertsDataCollector extends DataCollector
         return ($this->getReport()['complete'] ?? true) === true;
     }
 
+    public function getSource(): string
+    {
+        $source = $this->getReport()['source'] ?? null;
+
+        return match ($source) {
+            'valtry' => 'Valtry, signed',
+            'mixed' => 'Valtry, signed, and public feeds',
+            'public' => 'public feeds',
+            default => 'unknown',
+        };
+    }
+
     public function getCheckedAt(): ?string
     {
         $at = $this->getReport()['checked_at'] ?? null;

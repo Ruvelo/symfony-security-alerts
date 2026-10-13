@@ -10,6 +10,7 @@ use Ruvelo\SecurityAlertsBundle\Event\VulnerabilityResolvedEvent;
 use Ruvelo\SecurityAlertsBundle\State\StateStore;
 use Ruvelo\SecurityAlertsBundle\Tests\Support\FeedResponder;
 use Ruvelo\SecurityAlertsBundle\Tests\Support\TestKernel;
+use Ruvelo\SecurityAlertsBundle\Tests\Support\ValtryFake;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Bundle\FrameworkBundle\Test\MailerAssertionsTrait;
@@ -67,7 +68,8 @@ abstract class BundleTestCase extends KernelTestCase
     {
         self::ensureKernelShutdown();
 
-        $alerts += ['project_dir' => $this->project, 'cache_pool' => null, 'notify' => ['recipients' => ['ops@example.com'], 'from' => 'alerts@example.com', 'app_name' => 'Halyard']];
+        // The recorded fixtures are the public feeds' answers; the Valtry path has its own tests.
+        $alerts += ['source' => 'public', 'valtry_url' => ValtryFake::URL, 'project_dir' => $this->project, 'cache_pool' => null, 'notify' => ['recipients' => ['ops@example.com'], 'from' => 'alerts@example.com', 'app_name' => 'Halyard']];
         $alerts['state'] = ($alerts['state'] ?? []) + ['directory' => $this->project.'/state'];
         $framework += ['mailer' => ['dsn' => 'null://null']];
 
